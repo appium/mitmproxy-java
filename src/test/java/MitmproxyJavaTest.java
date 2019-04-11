@@ -1,17 +1,24 @@
-import org.junit.jupiter.api.Test;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.mashape.unirest.request.GetRequest;
+import org.apache.http.HttpHost;
+import org.junit.Test;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static junit.framework.TestCase.assertTrue;
 
 public class MitmproxyJavaTest {
 
     @Test
     public void ConstructorTest() throws URISyntaxException, IOException, InterruptedException {
-        MitmproxyJava proxy = new MitmproxyJava((InterceptedMessage m) -> {
+        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
             System.out.println(m.requestURL.toString());
             return m;
         });
@@ -20,6 +27,28 @@ public class MitmproxyJavaTest {
     }
 
     //todo test not modifying (by not returning)
-    
+
     //todo test modifying a response
+
+    @Test
+    public void StartTest() throws InterruptedException, ExecutionException, TimeoutException, IOException, URISyntaxException, UnirestException {
+        List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
+
+        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+            messages.add(m);
+            return m;
+        });
+        proxy.start();
+
+        Unirest.setProxy(new HttpHost("localhost", 8080));
+        Unirest.get("http://appium.io").asString();
+
+        proxy.stop();
+
+        assertTrue(messages.size() > 0);
+
+        InterceptedMessage appiumIORequest = messages.stream().filter((m) -> m.requestURL.getHost().equals("appium.io")).findFirst().get();
+
+        assertTrue(appiumIORequest.responseCode == 200);
+    }
 }

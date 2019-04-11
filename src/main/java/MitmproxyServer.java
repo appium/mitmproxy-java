@@ -72,6 +72,6 @@ public class MitmproxyServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-        System.out.println("server started successfully");
+        System.out.println("websocket server started successfully");
     }
 }
