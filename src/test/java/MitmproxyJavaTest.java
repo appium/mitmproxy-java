@@ -13,9 +13,13 @@ public class MitmproxyJavaTest {
     public void ConstructorTest() throws URISyntaxException, IOException, InterruptedException {
         MitmproxyJava proxy = new MitmproxyJava((InterceptedMessage m) -> {
             System.out.println(m.requestURL.toString());
-            return new Boolean(true);
+            return m;
         });
         System.out.println("advanced in test");
         proxy.stop();
     }
+
+    //todo test not modifying (by not returning)
+    
+    //todo test modifying a response
 }

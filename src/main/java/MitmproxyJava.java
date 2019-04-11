@@ -12,12 +12,8 @@ public class MitmproxyJava {
     private MitmproxyServer server;
     public static final int WEBSOCKET_PORT = 8765;
 
-    public MitmproxyJava(Function<InterceptedMessage, Boolean> messageInterceptor) throws URISyntaxException {
-//        InterceptedMessage message = new InterceptedMessage();
-//        message.message = "hi from message";
-//        messageInterceptor.apply(message);
-
-        server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT));
+    public MitmproxyJava(Function<InterceptedMessage, InterceptedMessage> messageInterceptor) throws URISyntaxException {
+        server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT), messageInterceptor);
         server.run();
         System.out.println("you started me");
     }

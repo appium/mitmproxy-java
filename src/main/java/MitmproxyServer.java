@@ -7,11 +7,15 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Function;
 
 public class MitmproxyServer extends WebSocketServer {
 
-    public MitmproxyServer(InetSocketAddress address) {
+    private Function<InterceptedMessage, InterceptedMessage> interceptor;
+
+    public MitmproxyServer(InetSocketAddress address, Function<InterceptedMessage, InterceptedMessage> interceptor) {
         super(address);
+        this.interceptor = interceptor;
     }
 
     @Override
@@ -35,6 +39,8 @@ public class MitmproxyServer extends WebSocketServer {
     public void onMessage( WebSocket conn, ByteBuffer message ) {
         System.out.println("received ByteBuffer from "	+ conn.getRemoteSocketAddress());
         InterceptedMessage intercepted = null;
+        InterceptedMessage modifiedMessage = null;
+
         try {
             intercepted = new InterceptedMessage(message);
         } catch (IOException e) {
@@ -42,8 +48,17 @@ public class MitmproxyServer extends WebSocketServer {
             e.printStackTrace();
         }
         System.out.println(intercepted.requestURL.toString());
+
+        modifiedMessage = interceptor.apply(intercepted);
+
+        // if the supplied interceptor function does not return a message, assume no changes were intended and just
+        // complete the request
+        if (modifiedMessage == null) {
+            modifiedMessage = intercepted;
+        }
+
         try {
-            conn.send(intercepted.serializedResponseToMitmproxy());
+            conn.send(modifiedMessage.serializedResponseToMitmproxy());
         } catch (JsonProcessingException e) {
             System.out.println("Could not encode response to mitmproxy");
             e.printStackTrace();
