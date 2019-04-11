@@ -98,6 +98,7 @@ class WebSocketAdapter:
         data1_size = len(data1)
         data2_size = len(data2)
         metadata_size = len(metadata_bytes)
+
         msg = struct.pack("<III" + str(metadata_size) + "s" +
                           str(data1_size) + "s" + str(data2_size) + "s",
                           metadata_size, data1_size, data2_size, metadata_bytes, data1, data2)
@@ -120,6 +121,8 @@ class WebSocketAdapter:
             return None
 
         new_response_size = len(new_response)
+        print(new_response_size)
+        print(new_response)
         all_data = struct.unpack("<II" + str(new_response_size - 8) + "s", new_response)
 
         return (json.loads(all_data[2][0:all_data[0]]), all_data[2][all_data[0]:])
