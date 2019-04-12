@@ -20,9 +20,7 @@ public class MitmproxyServer extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-    //    conn.send("Welcome to the server!"); //This method sends a message to the new client
-    //    broadcast( "new connection: " + handshake.getResourceDescriptor() ); //This method sends a message to all clients connected
-        System.out.println("new connection to " + conn.getRemoteSocketAddress());
+        System.out.println("new connection to websocket server" + conn.getRemoteSocketAddress());
     }
 
     @Override
@@ -37,7 +35,6 @@ public class MitmproxyServer extends WebSocketServer {
 
     @Override
     public void onMessage( WebSocket conn, ByteBuffer message ) {
-        System.out.println("received ByteBuffer from "	+ conn.getRemoteSocketAddress());
         InterceptedMessage intercepted = null;
         InterceptedMessage modifiedMessage = null;
 
@@ -47,7 +44,6 @@ public class MitmproxyServer extends WebSocketServer {
             System.out.println("Could not parse message");
             e.printStackTrace();
         }
-        System.out.println(intercepted.requestURL.toString());
 
         modifiedMessage = interceptor.apply(intercepted);
 

@@ -22,7 +22,6 @@ public class MitmproxyJava {
         this.mitmproxyPath = mitmproxyPath;
         server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT), messageInterceptor);
         server.start();
-        System.out.println("you started me");
     }
 
     public void start() throws IOException, InterruptedException, ExecutionException, TimeoutException {
@@ -35,13 +34,16 @@ public class MitmproxyJava {
                 .getFuture();
 
         waitForPortToBeInUse(8080);
-        System.out.println("done waiting");
+        System.out.println("mitmproxy started on port 8080");
 
     }
 
     public void stop() throws IOException, InterruptedException {
-        mitmproxyProcess.cancel(true);
-        server.stop();
+        if (mitmproxyProcess != null) {
+            mitmproxyProcess.cancel(true);
+        }
+        server.stop(1000);
+        Thread.sleep(200); // this pains me. but it seems that it takes a moment for the server to actually relinquish the port it uses.
     }
 
     private void waitForPortToBeInUse(int port) throws TimeoutException {
