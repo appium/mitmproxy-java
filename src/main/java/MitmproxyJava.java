@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -24,10 +26,14 @@ public class MitmproxyJava {
         server.start();
     }
 
-    public void start() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    public void start() throws IOException, InterruptedException, ExecutionException, TimeoutException, URISyntaxException {
         System.out.println("starting mitmproxy on port 8080");
+
+        URL resource = MitmproxyJava.class.getResource("scripts/proxy.py");
+        String pythonScriptPath = Paths.get(resource.toURI()).toRealPath().toString();
+
         mitmproxyProcess = new ProcessExecutor()
-                .command(mitmproxyPath, "--anticache", "-s", "scripts/proxy.py")
+                .command(mitmproxyPath, "--anticache", "-s", pythonScriptPath)
                 .redirectOutput(Slf4jStream.ofCaller().asInfo())
                 .destroyOnExit()
                 .start()
