@@ -6,7 +6,6 @@ import org.java_websocket.server.WebSocketServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 public class MitmproxyServer extends WebSocketServer {

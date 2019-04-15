@@ -1,24 +1,94 @@
 plugins {
-    id 'java'
+    id 'java-library'
+    id 'signing'
+    id 'maven'
 }
 
-group 'io.cloudgrey'
-version '1.0-SNAPSHOT'
+group = 'io.appium'
+version = '1.4'
+archivesBaseName = 'mitmproxy-java'
 
 sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
-    compile 'org.java-websocket:Java-WebSocket:1.4.0'
-    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0-m02'
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.8'
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.8'
-    compile group: 'org.zeroturnaround', name: 'zt-exec', version: '1.10'
-    compile group: 'org.zeroturnaround', name: 'zt-process-killer', version: '1.9'
-    compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.26'
+    implementation 'org.java-websocket:Java-WebSocket:1.4.0'
+    implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0-m02'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.8'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.8'
+    implementation group: 'org.zeroturnaround', name: 'zt-exec', version: '1.10'
+    implementation group: 'org.zeroturnaround', name: 'zt-process-killer', version: '1.9'
+    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.26'
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile group: 'com.mashape.unirest', name: 'unirest-java', version: '1.4.9'
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+artifacts {
+    archives javadocJar, sourcesJar
+}
+signing {
+    sign configurations.archives
+}
+
+
+// Build, sign, and upload
+uploadArchives {
+    repositories {
+        mavenDeployer {
+
+            // Sign POM
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            // Destination
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            // Add required metadata to POM
+            pom.project {
+                name 'mitmproxy-java'
+                packaging 'jar'
+                description 'A bridge between Python\'s mitmproxy and Java programs. Built on top of mitmproxy-node'
+                url 'https://github.com/appium/mitmproxy-java'
+
+                scm {
+                    connection 'scm:git:git://github.com/appium/mitmproxy-java.git'
+                    developerConnection 'scm:git:ssh://github.com/appium/mitmproxy-java.git'
+                    url 'http://github.com/appium/mitmproxy-java/tree/master'
+                }
+
+                licenses {
+                    license {
+                        name 'The Apache License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'jonahss'
+                        name 'Jonah Stiennon'
+                        email 'jonah@cloudgrey.io'
+                        organization 'Cloud Grey'
+                        organizationUrl 'https://cloudgrey.io'
+                    }
+                }
+            }
+        }
+    }
 }
