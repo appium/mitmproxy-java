@@ -40,13 +40,9 @@ public class MitmproxyJava {
     }
 
     private String extractPythonScriptToFile() throws URISyntaxException, IOException {
-        URL resource = MitmproxyJava.class.getResource("scripts/proxy.py");
-        URI pythonScriptUri = resource.toURI();
-
-        File infile = new File(pythonScriptUri);
         File outfile = File.createTempFile("mitmproxy-python-plugin", ".py");
 
-        FileInputStream instream = new FileInputStream(infile);
+        InputStream instream = getClass().getClassLoader().getResourceAsStream("scripts/proxy.py");
         FileOutputStream outstream = new FileOutputStream(outfile);
 
         byte[] buffer = new byte[1024];
