@@ -34,7 +34,17 @@ See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.
 
 * [`mitmproxy` V4](https://mitmproxy.org/) must be installed and runnable from the terminal. The install method cannot be a prebuilt binary or homebrew, since those packages are missing the Python websockets module. Install via `pip` or from source.
 * Python 3.6, since we use the new async/await syntax in the mitmproxy plugin
-* Maven/Gradle info coming soon
+* `pip3 install websockets`
+
+Maven:
+```
+
+```
+
+Gradle:
+```
+testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.5'
+```
 
 ## Usage
 
