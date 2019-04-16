@@ -48,6 +48,23 @@ testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.5'
 
 ## Usage
 
-Coming soon.
+```java
+List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
+
+// remember to set local OS proxy settings in the Network Preferences
+proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+    System.out.println("intercepted request for " + m.requestURL.toString());
+    messages.add(m);
+    return m;
+});
+
+proxy.start();
+
+// do stuff
+
+proxy.stop();
+
+```
+
 See blog post.
 Examples will be in AppiumPro repo.
