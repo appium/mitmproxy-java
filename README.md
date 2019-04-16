@@ -2,6 +2,8 @@ Java rendition of [node-mitmproxy](https://github.com/jvilk/mitmproxy-node)
 
 Make sure to read the prerequisites section below.
 
+Detailed information included in the [AppiumPro article which introduces this library](https://appiumpro.com/editions/65).
+
 ## Why?
 
 `mitmproxy` is great for capturing network traffic, but has no easy interface for Java users.
@@ -21,14 +23,6 @@ For transparently rewriting HTTP/HTTPS responses. The mitmproxy plugin lets ever
 ## How does it work?
 
 `mitmproxy-java` starts a Websocket server and a Python plugin for `mitmproxy` connects to it and sends requests over. The two communicate via binary messages to reduce marshaling-related overhead.
-
-## Your Java code is bad and you should feel bad
-
-I'm no Java expert! You may see some bad patterns, like my terrible disregard for exception handling. Let's make it better. File your issues and land some PRs! I wrote this in just a couple days for our weekly newsletter.
-
-## Your Python plugin is bad and you should feel bad
-
-See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.md#your-python-plugin-is-bad-and-you-should-feel-bad). Pull requests welcome!
 
 ## Pre-requisites
 
@@ -70,5 +64,14 @@ proxy.stop();
 
 ```
 
-See blog post.
-Examples will be in AppiumPro repo.
+See AppriumPro article for more guidelines: https://appiumpro.com/editions/65
+Example can be found here: https://github.com/cloudgrey-io/appiumpro/blob/master/java/src/test/java/Edition065_Capture_Network_Requests.java
+
+## Your Java code is bad and you should feel bad
+
+I'm no Java expert! You may see some bad patterns, like my terrible disregard for exception handling. Let's make it better. File your issues and land some PRs! I wrote this in just a couple days for our weekly newsletter.
+
+## Your Python plugin is bad and you should feel bad
+
+See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.md#your-python-plugin-is-bad-and-you-should-feel-bad). Pull requests welcome!
+
