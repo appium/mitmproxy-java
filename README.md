@@ -38,12 +38,16 @@ See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.
 
 Maven:
 ```
-
+<dependency>
+  <groupId>io.appium</groupId>
+  <artifactId>mitmproxy-java</artifactId>
+  <version>1.6.1</version>
+</dependency>
 ```
 
 Gradle:
 ```
-testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.5'
+testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.6.1'
 ```
 
 ## Usage
