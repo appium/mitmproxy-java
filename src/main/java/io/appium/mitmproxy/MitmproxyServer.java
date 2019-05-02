@@ -1,3 +1,5 @@
+package io.appium.mitmproxy;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
