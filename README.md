@@ -14,7 +14,7 @@ This library will run `mitmproxy` in the background as a separate process, and a
 See @jonahss's Appium Pro posts on this topic:
 - https://appiumpro.com/editions/62
 - https://appiumpro.com/editions/63
-- https://appiumpro.com/editions/65 <- coming soon
+- https://appiumpro.com/editions/65
 
 ## What can I use this for?
 
@@ -35,7 +35,7 @@ Maven:
 <dependency>
   <groupId>io.appium</groupId>
   <artifactId>mitmproxy-java</artifactId>
-  <version>1.6.1</version>
+  <version>1.6.2</version>
 </dependency>
 ```
 
