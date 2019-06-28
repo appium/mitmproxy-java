@@ -1,5 +1,6 @@
 package io.appium.mitmproxy;
 
+import org.apache.commons.io.IOUtils;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import org.zeroturnaround.exec.stream.slf4j.Slf4jStream;
@@ -9,8 +10,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URISyntaxException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -18,18 +19,27 @@ import java.util.function.Function;
 public class MitmproxyJava {
 
     private String mitmproxyPath;
+    private Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
+    private int proxyPort;
     private MitmproxyServer server;
     private Future<ProcessResult> mitmproxyProcess;
     public static final int WEBSOCKET_PORT = 8765;
 
-    public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor) {
+    public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor, int proxyPort) {
         this.mitmproxyPath = mitmproxyPath;
-        server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT), messageInterceptor);
-        server.start();
+        this.messageInterceptor = messageInterceptor;
+        this.proxyPort = proxyPort;
     }
 
-    public void start() throws IOException, TimeoutException, URISyntaxException {
-        System.out.println("starting mitmproxy on port 8080");
+    public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor) {
+        this(mitmproxyPath, messageInterceptor, 8080);
+    }
+
+    public void start() throws IOException, TimeoutException {
+        System.out.println("starting mitmproxy on port " + proxyPort);
+
+        server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT), messageInterceptor);
+        server.start();
 
         // python script file is zipped inside our jar. extract it into a temporary file.
         String pythonScriptPath = extractPythonScriptToFile();
@@ -41,35 +51,25 @@ public class MitmproxyJava {
                 .start()
                 .getFuture();
 
-        waitForPortToBeInUse(8080);
-        System.out.println("mitmproxy started on port 8080");
+        waitForPortToBeInUse(proxyPort);
+        System.out.println("mitmproxy started on port " + proxyPort);
 
     }
 
-    private String extractPythonScriptToFile() throws URISyntaxException, IOException {
+    private String extractPythonScriptToFile() throws IOException {
         File outfile = File.createTempFile("mitmproxy-python-plugin", ".py");
 
-        InputStream instream = getClass().getClassLoader().getResourceAsStream("scripts/proxy.py");
-        FileOutputStream outstream = new FileOutputStream(outfile);
+        try (
+                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("scripts/proxy.py");
+                FileOutputStream outputStream = new FileOutputStream(outfile)) {
 
-        byte[] buffer = new byte[1024];
-
-        int length;
-        /*copying the contents from input stream to
-         * output stream using read and write methods
-         */
-        while ((length = instream.read(buffer)) > 0){
-            outstream.write(buffer, 0, length);
+            IOUtils.copy(inputStream, outputStream);
         }
-
-        //Closing the input/output file streams
-        instream.close();
-        outstream.close();
 
         return outfile.getCanonicalPath();
     }
 
-    public void stop() throws IOException, InterruptedException {
+    public void stop() throws InterruptedException {
         if (mitmproxyProcess != null) {
             mitmproxyProcess.cancel(true);
         }
@@ -79,30 +79,17 @@ public class MitmproxyJava {
 
     private void waitForPortToBeInUse(int port) throws TimeoutException {
         boolean inUse = false;
-        Socket s = null;
         int tries = 0;
         int maxTries = 60 * 1000 / 100;
 
         while (!inUse) {
-            try
-            {
-                s = new Socket("localhost", port);
-            }
-            catch (IOException e)
-            {
+
+            try (Socket s = new Socket("localhost", port)) {
+                break;
+            } catch (IOException e) {
                 inUse = false;
             }
-            finally
-            {
-                if(s != null) {
-                    inUse = true;
-                    try {
-                        s.close();
-                    } catch (Exception e) {
-                    }
-                    break;
-                }
-            }
+
             tries++;
             if (tries == maxTries) {
                 throw new TimeoutException("Timed out waiting for mitmproxy to start");

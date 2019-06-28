@@ -26,9 +26,10 @@ public class InterceptedMessage {
     public int responseCode;
     public List<String[]> responseHeaders;
 
+    private final static ObjectMapper objectMapper = new ObjectMapper();
 
     public InterceptedMessage(ByteBuffer buffer) throws IOException {
-        buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
 
         int metadataSize = buffer.getInt();
         int request_content_size = buffer.getInt();
@@ -43,8 +44,7 @@ public class InterceptedMessage {
         responseBody = new byte[response_content_size];
         buffer.get(responseBody);
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode metadata = mapper.readTree(metadataBytes);
+        JsonNode metadata = objectMapper.readTree(metadataBytes);
         requestMethod = metadata.get("request").get("method").asText();
         requestURL = new URL(metadata.get("request").get("url").asText());
         JsonNode headers = metadata.get("request").get("headers");
@@ -72,13 +72,12 @@ public class InterceptedMessage {
 
         // create JSON for metadata. Which is the responseCode and responseHeaders.
         // while we're at it, set the Content-Length header
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode metadataRoot = mapper.createObjectNode();
+        ObjectNode metadataRoot = objectMapper.createObjectNode();
         metadataRoot.put("status_code", responseCode);
 
-        ArrayNode headersNode = mapper.createArrayNode();
+        ArrayNode headersNode = objectMapper.createArrayNode();
         List<ArrayNode> headerNodes = responseHeaders.stream().map((h) -> {
-            ArrayNode headerPair = mapper.createArrayNode();
+            ArrayNode headerPair = objectMapper.createArrayNode();
             headerPair.add(h[0]);
             if (h[0].equals("content-length")) {
                 headerPair.add(Integer.toString(contentLength));
@@ -90,10 +89,9 @@ public class InterceptedMessage {
         headersNode.addAll(headerNodes);
         metadataRoot.set("headers", headersNode);
 
-        String metadataJson = mapper.writeValueAsString(metadataRoot);
+        String metadataJson = objectMapper.writeValueAsString(metadataRoot);
         byte[] metadata = metadataJson.getBytes(StandardCharsets.UTF_8);
         int metadataLength = metadata.length;
-
 
         ByteBuffer buffer = ByteBuffer.allocate(8 + metadataLength + contentLength);
         buffer.order(ByteOrder.LITTLE_ENDIAN);

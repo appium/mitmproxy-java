@@ -11,28 +11,32 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static junit.framework.TestCase.assertTrue;
 
 public class MitmproxyJavaTest {
 
+//    private static final String MITMDUMP_PATH = "/usr/local/bin/mitmdump";
+    private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump";
+
+
     @Test
-    public void ConstructorTest() throws URISyntaxException, IOException, InterruptedException {
-        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+    public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
+        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
             System.out.println(m.requestURL.toString());
             return m;
         });
+        proxy.start();
         System.out.println("advanced in test");
         proxy.stop();
     }
 
     @Test
-    public void SimpleTest() throws InterruptedException, ExecutionException, TimeoutException, IOException, URISyntaxException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
+    public void SimpleTest() throws InterruptedException, TimeoutException, IOException, URISyntaxException, UnirestException {
+        List<InterceptedMessage> messages = new ArrayList<>();
 
-        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
             messages.add(m);
             return m;
         });
@@ -51,10 +55,10 @@ public class MitmproxyJavaTest {
     }
 
     @Test
-    public void NullInterceptorReturnTest() throws InterruptedException, ExecutionException, TimeoutException, IOException, URISyntaxException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
+    public void NullInterceptorReturnTest() throws InterruptedException, TimeoutException, IOException, URISyntaxException, UnirestException {
+        List<InterceptedMessage> messages = new ArrayList<>();
 
-        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
             messages.add(m);
             return null;
         });
@@ -73,10 +77,10 @@ public class MitmproxyJavaTest {
     }
 
     @Test
-    public void ResponseModificationTest() throws InterruptedException, ExecutionException, TimeoutException, IOException, URISyntaxException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
+    public void ResponseModificationTest() throws InterruptedException, TimeoutException, IOException, URISyntaxException, UnirestException {
+        List<InterceptedMessage> messages = new ArrayList<>();
 
-        MitmproxyJava proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
+        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
             messages.add(m);
             m.responseBody = "Hi from Test".getBytes(StandardCharsets.UTF_8);
             return m;

@@ -31,40 +31,39 @@ public class MitmproxyServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        System.out.println("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
+        System.out.println("received message from " + conn.getRemoteSocketAddress() + ": " + message);
     }
 
     @Override
-    public void onMessage( WebSocket conn, ByteBuffer message ) {
+    public void onMessage(WebSocket conn, ByteBuffer rawInputMessage) {
         InterceptedMessage intercepted = null;
-        InterceptedMessage modifiedMessage = null;
 
         try {
-            intercepted = new InterceptedMessage(message);
+            intercepted = new InterceptedMessage(rawInputMessage);
         } catch (IOException e) {
-            System.out.println("Could not parse message");
+            System.out.println("Could not parse rawInputMessage");
             e.printStackTrace();
         }
 
-        modifiedMessage = interceptor.apply(intercepted);
+        InterceptedMessage modifiedMessage = interceptor.apply(intercepted);
 
         // if the supplied interceptor function does not return a message, assume no changes were intended and just
         // complete the request
         if (modifiedMessage == null) {
-            modifiedMessage = intercepted;
-        }
-
-        try {
-            conn.send(modifiedMessage.serializedResponseToMitmproxy());
-        } catch (JsonProcessingException e) {
-            System.out.println("Could not encode response to mitmproxy");
-            e.printStackTrace();
+            conn.send(rawInputMessage);
+        } else {
+            try {
+                conn.send(modifiedMessage.serializedResponseToMitmproxy());
+            } catch (JsonProcessingException e) {
+                System.out.println("Could not encode response to mitmproxy");
+                e.printStackTrace();
+            }
         }
     }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
-        System.err.println("an error occured on connection " + conn.getRemoteSocketAddress()  + ":" + ex);
+        System.err.println("an error occured on connection " + conn.getRemoteSocketAddress() + ":" + ex);
     }
 
     @Override
