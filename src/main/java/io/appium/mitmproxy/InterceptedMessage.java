@@ -57,7 +57,7 @@ public class InterceptedMessage {
         }
 
         responseCode = metadata.get("response").get("status_code").asInt();
-        headers = metadata.get("request").get("headers");
+        headers = metadata.get("response").get("headers");
         responseHeaders = new ArrayList<>();
         for (JsonNode headerNode : headers) {
             String[] headerArray = new String[2];
