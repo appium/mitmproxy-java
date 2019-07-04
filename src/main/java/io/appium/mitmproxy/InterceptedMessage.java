@@ -89,8 +89,7 @@ public class InterceptedMessage {
         headersNode.addAll(headerNodes);
         metadataRoot.set("headers", headersNode);
 
-        String metadataJson = objectMapper.writeValueAsString(metadataRoot);
-        byte[] metadata = metadataJson.getBytes(StandardCharsets.UTF_8);
+        byte[] metadata = objectMapper.writeValueAsBytes(metadataRoot);
         int metadataLength = metadata.length;
 
         ByteBuffer buffer = ByteBuffer.allocate(8 + metadataLength + contentLength);
