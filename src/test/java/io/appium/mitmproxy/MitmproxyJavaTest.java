@@ -17,9 +17,7 @@ import static junit.framework.TestCase.assertTrue;
 
 public class MitmproxyJavaTest {
 
-//    private static final String MITMDUMP_PATH = "/usr/local/bin/mitmdump";
-    private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump";
-
+    private static final String MITMDUMP_PATH = "/usr/local/bin/mitmdump";
 
     @Test
     public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
