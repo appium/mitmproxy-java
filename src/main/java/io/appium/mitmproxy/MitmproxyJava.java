@@ -1,5 +1,6 @@
 package io.appium.mitmproxy;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.zeroturnaround.exec.ProcessExecutor;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -25,6 +27,7 @@ public class MitmproxyJava {
 
     private static final String LOCALHOST_IP = "127.0.0.1";
     private static final int WEBSOCKET_PORT = 8765;
+    private static final int TIMEOUT_FOR_SOCKET_CHECKING_MINS = 5;
 
     private final String mitmproxyPath;
 
@@ -49,7 +52,7 @@ public class MitmproxyJava {
         this(mitmproxyPath, messageInterceptor, 8080, null);
     }
 
-    public void start() throws IOException, TimeoutException {
+    public MitmproxyJava start() throws IOException, TimeoutException {
         log.info("Starting mitmproxy on port {}", proxyPort);
 
         server = new MitmproxyServer(new InetSocketAddress(LOCALHOST_IP, WEBSOCKET_PORT), messageInterceptor);
@@ -80,6 +83,7 @@ public class MitmproxyJava {
 
         waitForPortToBeInUse(proxyPort);
         log.info("Mitmproxy started on port {}", proxyPort);
+        return this;
     }
 
     private String extractPythonScriptToFile() throws IOException {
@@ -103,33 +107,19 @@ public class MitmproxyJava {
         waitForPortToBeFree(proxyPort);
     }
 
+    @SneakyThrows
     private void waitForPortToBeFree(int port) {
+        final LocalDateTime timeoutTime = LocalDateTime.now().plusMinutes(TIMEOUT_FOR_SOCKET_CHECKING_MINS);
 
         while (true) {
+            if(timeoutTime.isAfter(LocalDateTime.now())){
+                throw new TimeoutException("Timed out waiting for mitmproxy to stop");
+            }
             try (Socket s = new Socket(LOCALHOST_IP, port)) {
-            } catch (IOException e) {
+            } catch (IOException ioe) {
                 return;
             }
-        }
-    }
 
-    private void waitForPortToBeInUse(int port) throws TimeoutException {
-        boolean inUse = false;
-        int tries = 0;
-        int maxTries = 60 * 1000 / 100;
-
-        while (!inUse) {
-
-            try (Socket s = new Socket(LOCALHOST_IP, port)) {
-                break;
-            } catch (IOException e) {
-                inUse = false;
-            }
-
-            tries++;
-            if (tries == maxTries) {
-                throw new TimeoutException("Timed out waiting for mitmproxy to start");
-            }
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -137,5 +127,26 @@ public class MitmproxyJava {
             }
         }
     }
-}
 
+    @SneakyThrows
+    private void waitForPortToBeInUse(int port) {
+        final LocalDateTime timeoutTime = LocalDateTime.now().plusMinutes(TIMEOUT_FOR_SOCKET_CHECKING_MINS);
+
+        while (true) {
+
+            if(timeoutTime.isAfter(LocalDateTime.now())){
+                throw new TimeoutException("Timed out waiting for mitmproxy to start");
+            }
+
+            try (Socket s = new Socket(LOCALHOST_IP, port)) {
+                return;
+            } catch (IOException ioe) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}

@@ -12,6 +12,7 @@ import java.nio.ByteOrder;
 public class MessageSerializer {
 
     private final static ObjectMapper objectMapper = new ObjectMapper();
+    private static final int START_BYTES = 8;
 
     @SneakyThrows(IOException.class)
     public InterceptedMessage deserializeMessage(ByteBuffer buffer) {
@@ -23,7 +24,6 @@ public class MessageSerializer {
 
         byte[] metadataBytes = new byte[metadataSize];
         buffer.get(metadataBytes);
-
 
         byte[] requestBody = new byte[request_content_size];
         buffer.get(requestBody);
@@ -55,7 +55,7 @@ public class MessageSerializer {
         byte[] metadata = objectMapper.writeValueAsBytes(message.getResponse());
         int metadataLength = metadata.length;
 
-        ByteBuffer buffer = ByteBuffer.allocate(8 + metadataLength + contentLength);
+        ByteBuffer buffer = ByteBuffer.allocate(START_BYTES + metadataLength + contentLength);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         buffer.putInt(metadataLength);
         buffer.putInt(contentLength);

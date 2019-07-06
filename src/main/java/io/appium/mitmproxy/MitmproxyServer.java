@@ -15,11 +15,11 @@ public class MitmproxyServer extends WebSocketServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketServer.class);
 
-    private Function<InterceptedMessage, InterceptedMessage> interceptor;
+    private final Function<InterceptedMessage, InterceptedMessage> interceptor;
 
-    private MessageSerializer messageSerializer;
+    private final MessageSerializer messageSerializer;
 
-    public MitmproxyServer(InetSocketAddress address, Function<InterceptedMessage, InterceptedMessage> interceptor) {
+    MitmproxyServer(InetSocketAddress address, Function<InterceptedMessage, InterceptedMessage> interceptor) {
         super(address);
         this.interceptor = interceptor;
         this.messageSerializer = new MessageSerializer();
