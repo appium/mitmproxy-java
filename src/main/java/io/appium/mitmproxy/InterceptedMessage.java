@@ -1,104 +1,93 @@
 package io.appium.mitmproxy;
 
-import java.io.IOException;
-import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.Data;
 
+import java.net.URL;
+import java.util.List;
+
+@Data
 public class InterceptedMessage {
-
-    public byte[] requestBody;
-    public byte[] responseBody;
-
-    public String requestMethod;
-    public URL requestURL;
-    public List<String[]> requestHeaders;
-    public int responseCode;
-    public List<String[]> responseHeaders;
 
     private final static ObjectMapper objectMapper = new ObjectMapper();
 
-    public InterceptedMessage(ByteBuffer buffer) throws IOException {
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
+    /**
+     * Use getRequest().getMethod() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    public String requestMethod;
 
-        int metadataSize = buffer.getInt();
-        int request_content_size = buffer.getInt();
-        int response_content_size = buffer.getInt();
+    /**
+     * Use getRequest().getUrl() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    public URL requestURL;
 
-        byte[] metadataBytes = new byte[metadataSize];
-        buffer.get(metadataBytes);
+    /**
+     * Use getRequest().getHeaders() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    public List<String[]> requestHeaders;
 
-        requestBody = new byte[request_content_size];
-        buffer.get(requestBody);
+    /**
+     * Use getResponse().getStatusCode() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    public int responseCode;
 
-        responseBody = new byte[response_content_size];
-        buffer.get(responseBody);
+    /**
+     * Use getResponse().getHeaders() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    public List<String[]> responseHeaders;
 
-        JsonNode metadata = objectMapper.readTree(metadataBytes);
-        requestMethod = metadata.get("request").get("method").asText();
-        requestURL = new URL(metadata.get("request").get("url").asText());
-        JsonNode headers = metadata.get("request").get("headers");
-        requestHeaders = new ArrayList<>();
-        for (JsonNode headerNode : headers) {
-            String[] headerArray = new String[2];
-            headerArray[0] = headerNode.get(0).asText();
-            headerArray[1] = headerNode.get(1).asText();
-            requestHeaders.add(headerArray);
-        }
+    /**
+     * Use getRequest().getBody() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    private byte[] requestBody;
 
-        responseCode = metadata.get("response").get("status_code").asInt();
-        headers = metadata.get("response").get("headers");
-        responseHeaders = new ArrayList<>();
-        for (JsonNode headerNode : headers) {
-            String[] headerArray = new String[2];
-            headerArray[0] = headerNode.get(0).asText();
-            headerArray[1] = headerNode.get(1).asText();
-            responseHeaders.add(headerArray);
-        }
-    }
+    /**
+     * Use getResponse().getBody() instead
+     */
+    @JsonIgnore
+    @Deprecated
+    private byte[] responseBody;
 
-    public ByteBuffer serializedResponseToMitmproxy() throws JsonProcessingException {
-        int contentLength = responseBody.length;
+    private Request request;
 
-        // create JSON for metadata. Which is the responseCode and responseHeaders.
-        // while we're at it, set the Content-Length header
-        ObjectNode metadataRoot = objectMapper.createObjectNode();
-        metadataRoot.put("status_code", responseCode);
+    private Response response;
 
-        ArrayNode headersNode = objectMapper.createArrayNode();
-        List<ArrayNode> headerNodes = responseHeaders.stream().map((h) -> {
-            ArrayNode headerPair = objectMapper.createArrayNode();
-            headerPair.add(h[0]);
-            if (h[0].equals("content-length")) {
-                headerPair.add(Integer.toString(contentLength));
-            } else {
-                headerPair.add(h[1]);
-            }
-            return headerPair;
-        }).collect(Collectors.toList());
-        headersNode.addAll(headerNodes);
-        metadataRoot.set("headers", headersNode);
+    @Data
+    static class Request {
 
-        byte[] metadata = objectMapper.writeValueAsBytes(metadataRoot);
-        int metadataLength = metadata.length;
+        private String method;
 
-        ByteBuffer buffer = ByteBuffer.allocate(8 + metadataLength + contentLength);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putInt(metadataLength);
-        buffer.putInt(contentLength);
-        buffer.put(metadata);
-        buffer.put(responseBody);
+        private String url;
 
-        return (ByteBuffer) buffer.rewind();
+        private List<String[]> headers;
+
+        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+        private byte[] body;
+     }
+
+    @Data
+    public static class Response {
+
+        @JsonProperty("status_code")
+        private int statusCode;
+
+        private List<String[]> headers;
+
+        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+        private byte[] body;
     }
 }

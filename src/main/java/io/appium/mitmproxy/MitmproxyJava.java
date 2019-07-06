@@ -1,5 +1,6 @@
 package io.appium.mitmproxy;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
@@ -10,50 +11,75 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+
+@Slf4j
 public class MitmproxyJava {
 
-    private String mitmproxyPath;
-    private Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
-    private int proxyPort;
-    private MitmproxyServer server;
-    private Future<ProcessResult> mitmproxyProcess;
-    public static final int WEBSOCKET_PORT = 8765;
+    private static final String LOCALHOST_IP = "127.0.0.1";
+    private static final int WEBSOCKET_PORT = 8765;
 
-    public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor, int proxyPort) {
+    private String mitmproxyPath;
+
+    private Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
+
+    private int proxyPort;
+
+    private MitmproxyServer server;
+
+    private List<String> extraMitmdumpParams;
+
+    private Future<ProcessResult> mitmproxyProcess;
+
+    public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor, int proxyPort, List<String> extraMitmdumpParams) {
         this.mitmproxyPath = mitmproxyPath;
         this.messageInterceptor = messageInterceptor;
         this.proxyPort = proxyPort;
+        this.extraMitmdumpParams = extraMitmdumpParams;
     }
 
     public MitmproxyJava(String mitmproxyPath, Function<InterceptedMessage, InterceptedMessage> messageInterceptor) {
-        this(mitmproxyPath, messageInterceptor, 8080);
+        this(mitmproxyPath, messageInterceptor, 8080, null);
     }
 
     public void start() throws IOException, TimeoutException {
-        System.out.println("starting mitmproxy on port " + proxyPort);
+        log.info("Starting mitmproxy on port {}", proxyPort);
 
-        server = new MitmproxyServer(new InetSocketAddress("localhost", WEBSOCKET_PORT), messageInterceptor);
+        server = new MitmproxyServer(new InetSocketAddress(LOCALHOST_IP, WEBSOCKET_PORT), messageInterceptor);
         server.start();
 
         // python script file is zipped inside our jar. extract it into a temporary file.
         String pythonScriptPath = extractPythonScriptToFile();
 
+        final List<String> mitmproxyStartParams = new ArrayList<>();
+        mitmproxyStartParams.add(mitmproxyPath);
+        mitmproxyStartParams.add("--anticache");
+        mitmproxyStartParams.add("-p");
+        mitmproxyStartParams.add(String.valueOf(proxyPort));
+        mitmproxyStartParams.add("-s");
+        mitmproxyStartParams.add(pythonScriptPath);
+
+        // adding params if needed for mitmproxy
+        if (isNotEmpty(this.extraMitmdumpParams)) {
+            mitmproxyStartParams.addAll(this.extraMitmdumpParams);
+        }
+
         mitmproxyProcess = new ProcessExecutor()
-                .command(mitmproxyPath, "--anticache", "-s", pythonScriptPath)
+                .command(mitmproxyStartParams)
                 .redirectOutput(Slf4jStream.ofCaller().asInfo())
                 .destroyOnExit()
                 .start()
                 .getFuture();
 
         waitForPortToBeInUse(proxyPort);
-        System.out.println("mitmproxy started on port " + proxyPort);
-
+        log.info("Mitmproxy started on port {}", proxyPort);
     }
 
     private String extractPythonScriptToFile() throws IOException {
@@ -74,7 +100,17 @@ public class MitmproxyJava {
             mitmproxyProcess.cancel(true);
         }
         server.stop(1000);
-        Thread.sleep(200); // this pains me. but it seems that it takes a moment for the server to actually relinquish the port it uses.
+        waitForPortToBeFree(proxyPort);
+    }
+
+    private void waitForPortToBeFree(int port) {
+
+        while (true) {
+            try (Socket s = new Socket(LOCALHOST_IP, port)) {
+            } catch (IOException e) {
+                return;
+            }
+        }
     }
 
     private void waitForPortToBeInUse(int port) throws TimeoutException {
@@ -84,7 +120,7 @@ public class MitmproxyJava {
 
         while (!inUse) {
 
-            try (Socket s = new Socket("localhost", port)) {
+            try (Socket s = new Socket(LOCALHOST_IP, port)) {
                 break;
             } catch (IOException e) {
                 inUse = false;
