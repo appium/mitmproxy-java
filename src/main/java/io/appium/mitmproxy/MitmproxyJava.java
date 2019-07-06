@@ -26,15 +26,15 @@ public class MitmproxyJava {
     private static final String LOCALHOST_IP = "127.0.0.1";
     private static final int WEBSOCKET_PORT = 8765;
 
-    private String mitmproxyPath;
+    private final String mitmproxyPath;
 
-    private Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
+    private final Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
 
-    private int proxyPort;
+    private final int proxyPort;
 
     private MitmproxyServer server;
 
-    private List<String> extraMitmdumpParams;
+    private final List<String> extraMitmdumpParams;
 
     private Future<ProcessResult> mitmproxyProcess;
 

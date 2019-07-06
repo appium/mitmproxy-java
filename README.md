@@ -49,12 +49,18 @@ testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.6.1'
 ```java
 List<InterceptedMessage> messages = new ArrayList<InterceptedMessage>();
 
+//optional, default port is 8080
+int mitmproxyPort = 8090;
+
+//optional, you can pass null if no extra params
+List<String> extraMitmproxyParams = Arrays.asList("param1", "value1", "param2", "value2");
+
 // remember to set local OS proxy settings in the Network Preferences
 proxy = new MitmproxyJava("/usr/local/bin/mitmdump", (InterceptedMessage m) -> {
-    System.out.println("intercepted request for " + m.requestURL.toString());
+    System.out.println("intercepted request for " + m.getRequest().getUrl());
     messages.add(m);
     return m;
-});
+}, mitmproxyPort, extraMitmproxyParams);
 
 proxy.start();
 
