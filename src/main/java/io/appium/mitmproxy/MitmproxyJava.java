@@ -112,7 +112,7 @@ public class MitmproxyJava {
         final LocalDateTime timeoutTime = LocalDateTime.now().plusMinutes(TIMEOUT_FOR_SOCKET_CHECKING_MINS);
 
         while (true) {
-            if(timeoutTime.isAfter(LocalDateTime.now())){
+            if(timeoutTime.isBefore(LocalDateTime.now())){
                 throw new TimeoutException("Timed out waiting for mitmproxy to stop");
             }
             try (Socket s = new Socket(LOCALHOST_IP, port)) {
@@ -134,7 +134,7 @@ public class MitmproxyJava {
 
         while (true) {
 
-            if(timeoutTime.isAfter(LocalDateTime.now())){
+            if(timeoutTime.isBefore(LocalDateTime.now())){
                 throw new TimeoutException("Timed out waiting for mitmproxy to start");
             }
 
