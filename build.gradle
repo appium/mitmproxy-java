@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.appium'
-version = '1.6.2'
+version = '2.0.0'
 archivesBaseName = 'mitmproxy-java'
 
 sourceCompatibility = 1.8
