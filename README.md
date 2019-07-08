@@ -81,3 +81,6 @@ I'm no Java expert! You may see some bad patterns, like my terrible disregard fo
 
 See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.md#your-python-plugin-is-bad-and-you-should-feel-bad). Pull requests welcome!
 
+## Develop
+
+Upload to Central Repository with command `./gradlew uploadArchives`
