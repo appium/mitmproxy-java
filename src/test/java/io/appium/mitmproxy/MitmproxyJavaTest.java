@@ -18,7 +18,8 @@ import static org.mockito.Mockito.verify;
 
 public class MitmproxyJavaTest {
 
-    private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
+    //private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
+    private static final String MITMDUMP_PATH = "/usr/local/bin/mitmdump";
 
     @Test
     public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {

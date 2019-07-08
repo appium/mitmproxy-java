@@ -35,15 +35,6 @@ public class MessageSerializer {
         interceptedMessage.getRequest().setBody(requestBody);
         interceptedMessage.getResponse().setBody(responseBody);
 
-        //in order not to break the old API
-        interceptedMessage.setRequestBody(requestBody);
-        interceptedMessage.setResponseBody(responseBody);
-        interceptedMessage.setRequestHeaders(interceptedMessage.getRequest().getHeaders());
-        interceptedMessage.setResponseHeaders(interceptedMessage.getResponse().getHeaders());
-        interceptedMessage.setResponseCode(interceptedMessage.getResponse().getStatusCode());
-        interceptedMessage.setRequestURL(new URL(interceptedMessage.getRequest().getUrl()));
-        interceptedMessage.setRequestMethod(interceptedMessage.getRequest().getMethod());
-
         return interceptedMessage;
     }
 
