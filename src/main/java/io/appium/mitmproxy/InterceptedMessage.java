@@ -1,11 +1,9 @@
 package io.appium.mitmproxy;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
-import java.net.URL;
 import java.util.List;
 
 @Data
@@ -18,7 +16,7 @@ public class InterceptedMessage {
     private Response response;
 
     @Data
-    static class Request {
+    public static class Request {
 
         private String method;
 
