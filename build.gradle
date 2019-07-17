@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.appium'
-version = '2.0.0'
+version = '2.0.1'
 archivesBaseName = 'mitmproxy-java'
 
 sourceCompatibility = 1.8
@@ -30,7 +30,7 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok:1.18.8'
     annotationProcessor 'org.projectlombok:lombok:1.18.8'
-    
+
     compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
 }
 
