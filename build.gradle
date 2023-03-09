@@ -46,7 +46,10 @@ artifacts {
     archives javadocJar, sourcesJar
 }
 signing {
-    sign configurations.archives
+    setRequired {
+        // signing is only required if the artifacts are to be published
+        sign configurations.archives
+    }
 }
 
 
@@ -60,10 +63,10 @@ uploadArchives {
 
             // Destination
             repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: ossrhUsername, password: ossrhPassword)
+                authentication(userName: hasProperty('ossrhUsername'), password: hasProperty('ossrhPassword'))
             }
             snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: ossrhUsername, password: ossrhPassword)
+                authentication(userName: hasProperty('ossrhUsername'), password: hasProperty('ossrhPassword'))
             }
 
             // Add required metadata to POM
