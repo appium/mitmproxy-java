@@ -29,7 +29,6 @@ public class MitmproxyJavaTest {
     }
     @Test
     public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
-        System.out.println();
         MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
             System.out.println(m.getRequest().getUrl());
             return m;
