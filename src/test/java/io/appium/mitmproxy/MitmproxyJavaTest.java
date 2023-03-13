@@ -19,8 +19,14 @@ import static org.mockito.Mockito.verify;
 public class MitmproxyJavaTest {
 
     //private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
-    private static final String MITMDUMP_PATH = "/usr/local/bin/mitmdump";
+    private static final String MITMDUMP_PATH = getMITMDumpPath();
 
+    static String getMITMDumpPath(){
+        if(System.getProperty("os.name").contains("Mac")){
+            return "/opt/homebrew/bin/mitmdump";
+        }
+        return "/usr/local/bin/mitmdump";
+    }
     @Test
     public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
         MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {

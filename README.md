@@ -26,8 +26,8 @@ For transparently rewriting HTTP/HTTPS responses. The mitmproxy plugin lets ever
 
 ## Pre-requisites
 
-* [`mitmproxy` V4](https://mitmproxy.org/) must be installed and runnable from the terminal. The install method cannot be a prebuilt binary or homebrew, since those packages are missing the Python websockets module. Install via `pip` or from source.
-* Python 3.6, since we use the new async/await syntax in the mitmproxy plugin
+* [`mitmproxy` V9](https://mitmproxy.org/) must be installed and runnable from the terminal. The install method cannot be a prebuilt binary or homebrew, since those packages are missing the Python websockets module. Install via `pip` or from source.
+* Python 3.6 and above, since we use the new async/await syntax in the mitmproxy plugin
 * `pip3 install websockets`
 
 Maven:
@@ -35,13 +35,13 @@ Maven:
 <dependency>
   <groupId>io.appium</groupId>
   <artifactId>mitmproxy-java</artifactId>
-  <version>1.6.2</version>
+  <version>2.0.2</version>
 </dependency>
 ```
 
 Gradle:
 ```
-testCompile group: 'io.appium', name: 'mitmproxy-java', version: '1.6.1'
+testCompile group: 'io.appium', name: 'mitmproxy-java', version: '2.0.2'
 ```
 
 ## Usage
@@ -67,10 +67,16 @@ proxy.start();
 // do stuff
 
 proxy.stop();
-
 ```
 
-See AppriumPro article for more guidelines: https://appiumpro.com/editions/65
+If the above code doesn't work, and you are getting 
+`Error=2, No such file or directory` please re-check your mitmdump path in new MitmproxyJava initialization.
+You can get mitmdump path using below command:
+```shell
+whereis mitmdump
+```
+
+See AppiumPro article for more guidelines: https://appiumpro.com/editions/65
 Example can be found here: https://github.com/cloudgrey-io/appiumpro/blob/master/java/src/test/java/Edition065_Capture_Network_Requests.java
 
 ## Your Java code is bad and you should feel bad
