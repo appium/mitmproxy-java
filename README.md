@@ -90,3 +90,4 @@ See [node-mitmproxy](https://github.com/jvilk/mitmproxy-node/blob/master/README.
 ## Develop
 
 Upload to Central Repository with command `./gradlew uploadArchives`
+Set username and password in `build.gradle` file

@@ -46,9 +46,10 @@ artifacts {
 }
 signing {
     setRequired {
-        // signing is only required if the artifacts are to be published
-        sign configurations.archives
+        // condition for when signing is required
+        gradle.taskGraph.hasTask("uploadArchives")
     }
+    sign configurations.archives
 }
 
 
@@ -62,10 +63,10 @@ uploadArchives {
 
             // Destination
             repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: hasProperty('ossrhUsername'), password: hasProperty('ossrhPassword'))
+                authentication(userName: 'username', password: 'password')
             }
             snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: hasProperty('ossrhUsername'), password: hasProperty('ossrhPassword'))
+                authentication(userName: 'username', password: 'password')
             }
 
             // Add required metadata to POM
