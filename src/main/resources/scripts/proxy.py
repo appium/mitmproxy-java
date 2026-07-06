@@ -57,9 +57,15 @@ class WebSocketAdapter:
         self.queue = queue.Queue()
         self.intercept_paths = frozenset([])
         self.only_intercept_text_files = False
+        self.ws_port = 8765
         self.finished = False
-        # Start websocket thread
-        threading.Thread(target=self.websocket_thread).start()
+        self._websocket_thread_started = False
+        # NOTE: the websocket thread is intentionally NOT started here. mitmproxy
+        # calls __init__() before load()/configure(), so starting the thread here
+        # would race against configure() setting the real wsPort from the CLI —
+        # the background thread could connect using the stale default before the
+        # real port is applied. It's started instead on the first configure()
+        # call, once all options (including wsPort) are guaranteed to be set.
 
     def load(self, loader):
         loader.add_option(
@@ -75,6 +81,16 @@ class WebSocketAdapter:
             default = False,
             help = "If true, the plugin only intercepts text files and passes through other types of files",
         )
+        loader.add_option(
+            name = "wsPort",
+            typespec = int,
+            default = 8765,
+            help = "The port this script's websocket client connects to, to talk back to the Java control process. "
+                   "Must match the port MitmproxyJava bound its control-channel server to. Defaults to 8765 for "
+                   "backwards compatibility, but MUST be set explicitly to a unique free port whenever more than "
+                   "one MitmproxyJava instance may run on the same machine at once (e.g. parallel test execution) "
+                   "— otherwise multiple instances will collide trying to use the same fixed port.",
+        )
         return
 
     def configure(self, updates):
@@ -86,6 +102,12 @@ class WebSocketAdapter:
             self.only_intercept_text_files = ctx.options.onlyInterceptTextFiles
             #print("Only intercept text files:")
             #print(self.only_intercept_text_files)
+        if "wsPort" in updates:
+            self.ws_port = ctx.options.wsPort
+
+        if not self._websocket_thread_started:
+            self._websocket_thread_started = True
+            threading.Thread(target=self.websocket_thread).start()
         return
 
     def send_message(self, metadata, data1, data2):
@@ -220,7 +242,7 @@ class WebSocketAdapter:
         """
         while not self.finished:
             try:
-                async with websockets.connect('ws://localhost:8765', max_size = None) as websocket:
+                async with websockets.connect(f'ws://localhost:{self.ws_port}', max_size = None) as websocket:
                     while True:
                         # Make sure connection is still live.
                         await websocket.ping()

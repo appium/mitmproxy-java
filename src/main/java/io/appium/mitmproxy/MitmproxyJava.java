@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,7 +30,6 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 public class MitmproxyJava {
 
   private static final String LOCALHOST_IP = "127.0.0.1";
-  private static final int WEBSOCKET_PORT = 8765;
   private static final int TIMEOUT_FOR_SOCKET_CHECKING_MINS = 5;
 
   private final String mitmproxyPath;
@@ -71,7 +71,14 @@ public class MitmproxyJava {
     log.info("Starting mitmproxy on port {}", proxyPort);
 
     try {
-      server = new MitmproxyServer(new InetSocketAddress(LOCALHOST_IP, WEBSOCKET_PORT), messageInterceptor);
+      // Each MitmproxyJava instance gets its OWN free port for the Java<->Python
+      // control channel, instead of the old hardcoded 8765. Without this, two
+      // instances running at the same time (e.g. parallel test execution) would
+      // both try to bind the same port and the second one would fail with
+      // "Address already in use".
+      int websocketPort = findFreePort();
+
+      server = new MitmproxyServer(new InetSocketAddress(LOCALHOST_IP, websocketPort), messageInterceptor);
       server.start();
 
       // python script file is zipped inside our jar. extract it into a temporary file.
@@ -84,6 +91,10 @@ public class MitmproxyJava {
       mitmproxyStartParams.add(String.valueOf(proxyPort));
       mitmproxyStartParams.add("-s");
       mitmproxyStartParams.add(pythonScriptPath);
+      // Tell proxy.py which port to connect back to for the control channel —
+      // must match the port MitmproxyServer just bound to above.
+      mitmproxyStartParams.add("--set");
+      mitmproxyStartParams.add("wsPort=" + websocketPort);
 
       // adding params if needed for mitmproxy
       if (isNotEmpty(this.extraMitmdumpParams)) {
@@ -105,6 +116,21 @@ public class MitmproxyJava {
       // instead of permanently wedging this instance in a started state.
       isRunning.set(false);
       throw e;
+    }
+  }
+
+  /**
+   * Asks the OS for a free ephemeral port by briefly binding a ServerSocket
+   * to port 0, reading back the port it was assigned, then releasing it.
+   * There's a small unavoidable window between releasing this socket and
+   * MitmproxyServer binding to the same port where another process could
+   * theoretically grab it first — but this is the standard, practical way
+   * to get a free port in Java, and is a large improvement over the
+   * previous hardcoded-for-the-whole-JVM port.
+   */
+  private static int findFreePort() throws IOException {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
     }
   }
 

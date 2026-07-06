@@ -19,7 +19,7 @@ import java.util.function.Function;
  * means {@link #onMessage(WebSocket, ByteBuffer)} — and therefore the
  * user-supplied {@code interceptor} function — can be invoked concurrently
  * from multiple threads at the same time.
- * <p>
+ *
  * {@link MessageSerializer} and {@link InterceptedMessage} are stateless /
  * per-call, so they're safe to share across those threads as-is. The
  * remaining responsibility is on the caller: if your interceptor reads or
@@ -93,7 +93,12 @@ public class MitmproxyServer extends WebSocketServer {
 
   @Override
   public void onError(WebSocket conn, Exception ex) {
-    LOGGER.error("an error occured on connection " + conn.getRemoteSocketAddress() + ":" + ex);
+    // conn is null for server-level fatal errors (e.g. a bind failure on
+    // startup) that happen before any client connection exists — calling
+    // conn.getRemoteSocketAddress() in that case throws an NPE that hides
+    // the actual underlying exception (ex) from the logs.
+    String connectionInfo = (conn != null) ? String.valueOf(conn.getRemoteSocketAddress()) : "N/A (no connection - likely a server-level error)";
+    LOGGER.error("an error occured on connection " + connectionInfo + ":" + ex, ex);
   }
 
   @Override
