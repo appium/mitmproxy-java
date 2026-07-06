@@ -1,5 +1,5 @@
-.gradle
 .idea
+target
 out
 build
 __pycache__

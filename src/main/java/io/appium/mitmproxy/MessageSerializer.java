@@ -53,6 +53,6 @@ public class MessageSerializer {
         buffer.put(metadata);
         buffer.put(message.getResponse().getBody());
 
-        return (ByteBuffer) buffer.rewind();
+        return buffer.rewind();
     }
 }

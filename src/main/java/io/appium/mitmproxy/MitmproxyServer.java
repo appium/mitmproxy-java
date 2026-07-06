@@ -11,6 +11,23 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
+/**
+ * NOTE ON THREAD SAFETY:
+ * {@code java_websocket}'s {@link WebSocketServer} dispatches each connection's
+ * messages on its own thread, and mitmproxy can hold multiple concurrent
+ * connections open (one per in-flight HTTP transaction being proxied). That
+ * means {@link #onMessage(WebSocket, ByteBuffer)} — and therefore the
+ * user-supplied {@code interceptor} function — can be invoked concurrently
+ * from multiple threads at the same time.
+ *
+ * {@link MessageSerializer} and {@link InterceptedMessage} are stateless /
+ * per-call, so they're safe to share across those threads as-is. The
+ * remaining responsibility is on the caller: if your interceptor reads or
+ * writes shared state (e.g. collecting messages into a list), that state
+ * must be a thread-safe structure (e.g. {@code CopyOnWriteArrayList},
+ * {@code Collections.synchronizedList}, or a {@code ConcurrentLinkedQueue}) —
+ * a plain {@code ArrayList} will corrupt under concurrent access.
+ */
 public class MitmproxyServer extends WebSocketServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketServer.class);
@@ -42,15 +59,28 @@ public class MitmproxyServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, ByteBuffer rawInputMessage) {
+        // NOTE: this method runs concurrently on a per-connection thread — see
+        // the class-level Javadoc. deserializeMessage/serializeMessage are
+        // stateless so they're safe to call from multiple threads here; the
+        // interceptor call below is the boundary into user code.
         InterceptedMessage incomingMessage = this.messageSerializer.deserializeMessage(rawInputMessage);
 
-        InterceptedMessage modifiedMessage = interceptor.apply(incomingMessage);
+        InterceptedMessage messageToSendBack;
+        try {
+            InterceptedMessage modifiedMessage = interceptor.apply(incomingMessage);
 
-        // if the supplied interceptor function does not return a message, assume no changes were intended and just
-        // complete the request
-        InterceptedMessage messageToSendBack = modifiedMessage;
-
-        if (modifiedMessage == null) {
+            // if the supplied interceptor function does not return a message, assume no changes were intended and
+            // just complete the request
+            messageToSendBack = (modifiedMessage != null) ? modifiedMessage : incomingMessage;
+        } catch (RuntimeException e) {
+            // Without this, an exception thrown by user code (e.g. a
+            // non-thread-safe collection blowing up under concurrent access)
+            // propagates up through the websocket library's thread and the
+            // in-flight HTTP request mitmproxy is waiting on hangs forever
+            // with no indication of why. Log it and pass the request through
+            // unmodified instead of leaving the caller hanging.
+            LOGGER.error("interceptor threw an exception while processing " + incomingMessage.getRequest().getUrl()
+                    + "; passing request through unmodified", e);
             messageToSendBack = incomingMessage;
         }
 

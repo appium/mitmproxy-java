@@ -22,10 +22,7 @@ public class MitmproxyJavaTest {
     private static final String MITMDUMP_PATH = getMITMDumpPath();
 
     static String getMITMDumpPath(){
-        if(System.getProperty("os.name").contains("Mac")){
-            return "/opt/homebrew/bin/mitmdump";
-        }
-        return "/usr/local/bin/mitmdump";
+        return "/Library/Frameworks/Python.framework/Versions/3.11/bin/mitmdump";
     }
     @Test
     public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
