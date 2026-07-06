@@ -1,7 +1,6 @@
 package io.appium.mitmproxy;
 
-import com.mashape.unirest.http.Unirest;
-import org.apache.http.HttpHost;
+import kong.unirest.core.Unirest;
 import org.junit.After;
 import org.junit.Test;
 
@@ -36,187 +35,192 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 public class ConcurrencyTest {
 
-    private MitmproxyJava proxy;
+  private MitmproxyJava proxy;
 
-    @After
-    public void tearDown() throws InterruptedException {
-        if (proxy != null) {
-            proxy.stop(); // safe no-op now even if start() never succeeded
-        }
-        Unirest.clearDefaultHeaders();
+  @After
+  public void tearDown() throws InterruptedException {
+    if (proxy != null) {
+      proxy.stop(); // safe no-op now even if start() never succeeded
     }
+    // Unirest 4's Config locks itself once the underlying HTTP client is
+    // built (i.e. after the first request), so the *next* test's call to
+    // Unirest.config().proxy(...) would throw UnirestConfigException
+    // without this reset(). reset() also clears default headers, proxy,
+    // etc., so there's no separate clearDefaultHeaders() call needed.
+    Unirest.config().reset();
+  }
 
-    @Test
-    public void concurrentRequestsAreAllCapturedWithoutLossOrCorruption() throws Exception {
-        int requestCount = 25;
-        int port = 8090;
+  @Test
+  public void concurrentRequestsAreAllCapturedWithoutLossOrCorruption() throws Exception {
+    int requestCount = 25;
+    int port = 8090;
 
-        // The collection under test: this MUST be thread-safe, since the
-        // interceptor is invoked concurrently once more than one request is
-        // in flight. This is exactly the pattern from ThreadSafeMessageCollector.
-        List<InterceptedMessage> messages = new CopyOnWriteArrayList<>();
+    // The collection under test: this MUST be thread-safe, since the
+    // interceptor is invoked concurrently once more than one request is
+    // in flight. This is exactly the pattern from ThreadSafeMessageCollector.
+    List<InterceptedMessage> messages = new CopyOnWriteArrayList<>();
 
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> {
-            messages.add(m);
-            return m;
-        }, port, null);
-        proxy.start();
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> {
+      messages.add(m);
+      return m;
+    }, port, null);
+    proxy.start();
 
-        Unirest.setProxy(new HttpHost("localhost", port));
+    Unirest.config().proxy("localhost", port);
 
-        ExecutorService pool = Executors.newFixedThreadPool(10);
-        try {
-            List<Future<?>> futures = IntStream.range(0, requestCount)
-                    .mapToObj(i -> pool.submit(() -> {
-                        try {
-                            Unirest.get("http://appium.io")
-                                    .header("requestIndex", String.valueOf(i))
-                                    .asString();
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }))
-                    .collect(Collectors.toList());
-
-            for (Future<?> f : futures) {
-                f.get(15, TimeUnit.SECONDS); // fail the test if any request hangs
+    ExecutorService pool = Executors.newFixedThreadPool(10);
+    try {
+      List<Future<?>> futures = IntStream.range(0, requestCount)
+          .mapToObj(i -> pool.submit(() -> {
+            try {
+              Unirest.get("http://appium.io")
+                  .header("requestIndex", String.valueOf(i))
+                  .asString();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
             }
-        } finally {
-            pool.shutdown();
-        }
+          }))
+          .collect(Collectors.toList());
 
-        proxy.stop();
-
-        // No lost or duplicated messages despite concurrent writers.
-        assertThat(messages).hasSize(requestCount);
-
-        // Every request index shows up exactly once — if the underlying list
-        // were a plain ArrayList, concurrent adds could silently drop entries
-        // or throw ConcurrentModificationException before we even get here.
-        List<String> seenIndices = messages.stream()
-                .map(m -> headerValue(m, "requestIndex"))
-                .collect(Collectors.toList());
-        List<String> expectedIndices = IntStream.range(0, requestCount)
-                .mapToObj(String::valueOf)
-                .collect(Collectors.toList());
-        assertThat(seenIndices).containsExactlyInAnyOrderElementsOf(expectedIndices);
+      for (Future<?> f : futures) {
+        f.get(15, TimeUnit.SECONDS); // fail the test if any request hangs
+      }
+    } finally {
+      pool.shutdown();
     }
 
-    @Test
-    public void onlyOneConcurrentStartCallSucceeds() throws Exception {
-        int port = 8091;
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, port, null);
+    proxy.stop();
 
-        int threadCount = 5;
-        CountDownLatch readyLatch = new CountDownLatch(threadCount);
-        CountDownLatch goLatch = new CountDownLatch(1);
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger failureCount = new AtomicInteger(0);
+    // No lost or duplicated messages despite concurrent writers.
+    assertThat(messages).hasSize(requestCount);
 
-        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
-        try {
-            for (int i = 0; i < threadCount; i++) {
-                pool.submit(() -> {
-                    readyLatch.countDown();
-                    try {
-                        goLatch.await(); // line every thread up to hit start() at once
-                        proxy.start();
-                        successCount.incrementAndGet();
-                    } catch (IllegalStateException e) {
-                        failureCount.incrementAndGet();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            }
+    // Every request index shows up exactly once — if the underlying list
+    // were a plain ArrayList, concurrent adds could silently drop entries
+    // or throw ConcurrentModificationException before we even get here.
+    List<String> seenIndices = messages.stream()
+        .map(m -> headerValue(m, "requestIndex"))
+        .collect(Collectors.toList());
+    List<String> expectedIndices = IntStream.range(0, requestCount)
+        .mapToObj(String::valueOf)
+        .collect(Collectors.toList());
+    assertThat(seenIndices).containsExactlyInAnyOrderElementsOf(expectedIndices);
+  }
 
-            readyLatch.await(5, TimeUnit.SECONDS);
-            goLatch.countDown(); // release all threads simultaneously
+  @Test
+  public void onlyOneConcurrentStartCallSucceeds() throws Exception {
+    int port = 8091;
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, port, null);
 
-            pool.shutdown();
-            assertThat(pool.awaitTermination(15, TimeUnit.SECONDS)).isTrue();
-        } finally {
-            if (!pool.isShutdown()) {
-                pool.shutdownNow();
-            }
-        }
+    int threadCount = 5;
+    CountDownLatch readyLatch = new CountDownLatch(threadCount);
+    CountDownLatch goLatch = new CountDownLatch(1);
+    AtomicInteger successCount = new AtomicInteger(0);
+    AtomicInteger failureCount = new AtomicInteger(0);
 
-        // synchronized + AtomicBoolean guard means exactly one thread wins the race.
-        assertThat(successCount.get()).isEqualTo(1);
-        assertThat(failureCount.get()).isEqualTo(threadCount - 1);
+    ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+    try {
+      for (int i = 0; i < threadCount; i++) {
+        pool.submit(() -> {
+          readyLatch.countDown();
+          try {
+            goLatch.await(); // line every thread up to hit start() at once
+            proxy.start();
+            successCount.incrementAndGet();
+          } catch (IllegalStateException e) {
+            failureCount.incrementAndGet();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+      }
 
-        // and the proxy is actually usable after the race settles
-        Unirest.setProxy(new HttpHost("localhost", port));
-        assertThat(Unirest.get("http://appium.io").asString().getStatus()).isEqualTo(200);
+      readyLatch.await(5, TimeUnit.SECONDS);
+      goLatch.countDown(); // release all threads simultaneously
+
+      pool.shutdown();
+      assertThat(pool.awaitTermination(15, TimeUnit.SECONDS)).isTrue();
+    } finally {
+      if (!pool.isShutdown()) {
+        pool.shutdownNow();
+      }
     }
 
-    @Test
-    public void interceptorExceptionDoesNotHangTheRequest() throws Exception {
-        int port = 8092;
+    // synchronized + AtomicBoolean guard means exactly one thread wins the race.
+    assertThat(successCount.get()).isEqualTo(1);
+    assertThat(failureCount.get()).isEqualTo(threadCount - 1);
 
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> {
-            throw new RuntimeException("boom - simulated broken interceptor");
-        }, port, null);
-        proxy.start();
+    // and the proxy is actually usable after the race settles
+    Unirest.config().proxy("localhost", port);
+    assertThat(Unirest.get("http://appium.io").asString().getStatus()).isEqualTo(200);
+  }
 
-        Unirest.setProxy(new HttpHost("localhost", port));
+  @Test
+  public void interceptorExceptionDoesNotHangTheRequest() throws Exception {
+    int port = 8092;
 
-        // Before the try/catch fix in MitmproxyServer.onMessage, this would
-        // hang indefinitely because the connection thread died with an
-        // uncaught exception and never sent a response back to mitmdump.
-        ExecutorService pool = Executors.newSingleThreadExecutor();
-        try {
-            Future<Integer> future = pool.submit(() ->
-                    Unirest.get("http://appium.io").asString().getStatus());
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> {
+      throw new RuntimeException("boom - simulated broken interceptor");
+    }, port, null);
+    proxy.start();
 
-            Integer status = future.get(10, TimeUnit.SECONDS); // throws TimeoutException if it hangs
-            assertThat(status).isEqualTo(200);
-        } finally {
-            pool.shutdownNow();
-        }
+    Unirest.config().proxy("localhost", port);
+
+    // Before the try/catch fix in MitmproxyServer.onMessage, this would
+    // hang indefinitely because the connection thread died with an
+    // uncaught exception and never sent a response back to mitmdump.
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      Future<Integer> future = pool.submit(() ->
+          Unirest.get("http://appium.io").asString().getStatus());
+
+      Integer status = future.get(10, TimeUnit.SECONDS); // throws TimeoutException if it hangs
+      assertThat(status).isEqualTo(200);
+    } finally {
+      pool.shutdownNow();
     }
+  }
 
-    @Test
-    public void stopWithoutStartIsASafeNoOp() throws InterruptedException {
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8093, null);
-        // start() deliberately not called
-        proxy.stop(); // should not throw
-    }
+  @Test
+  public void stopWithoutStartIsASafeNoOp() throws InterruptedException {
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8093, null);
+    // start() deliberately not called
+    proxy.stop(); // should not throw
+  }
 
-    @Test
-    public void stopCanBeCalledMultipleTimesSafely() throws Exception {
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8094, null);
-        proxy.start();
-        proxy.stop();
-        proxy.stop(); // second call should be a no-op, not throw
-    }
+  @Test
+  public void stopCanBeCalledMultipleTimesSafely() throws Exception {
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8094, null);
+    proxy.start();
+    proxy.stop();
+    proxy.stop(); // second call should be a no-op, not throw
+  }
 
-    @Test
-    public void startAfterStopWorksAgain() throws Exception {
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8095, null);
-        proxy.start();
-        proxy.stop();
+  @Test
+  public void startAfterStopWorksAgain() throws Exception {
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8095, null);
+    proxy.start();
+    proxy.stop();
 
-        // instance should be reusable, not permanently wedged
-        proxy.start();
-        Unirest.setProxy(new HttpHost("localhost", 8095));
-        assertThat(Unirest.get("http://appium.io").asString().getStatus()).isEqualTo(200);
-    }
+    // instance should be reusable, not permanently wedged
+    proxy.start();
+    Unirest.config().proxy("localhost", 8095);
+    assertThat(Unirest.get("http://appium.io").asString().getStatus()).isEqualTo(200);
+  }
 
-    @Test
-    public void startTwiceWithoutStopThrows() throws Exception {
-        proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8096, null);
-        proxy.start();
+  @Test
+  public void startTwiceWithoutStopThrows() throws Exception {
+    proxy = new MitmproxyJava(MitmproxyJavaTest.getMITMDumpPath(), m -> m, 8096, null);
+    proxy.start();
 
-        assertThatThrownBy(() -> proxy.start())
-                .isInstanceOf(IllegalStateException.class);
-    }
+    assertThatThrownBy(() -> proxy.start())
+        .isInstanceOf(IllegalStateException.class);
+  }
 
-    private static String headerValue(InterceptedMessage message, String headerName) {
-        return message.getRequest().getHeaders().stream()
-                .filter(h -> h.length == 2 && headerName.equalsIgnoreCase(h[0]))
-                .map(h -> h[1])
-                .findFirst()
-                .orElse(null);
-    }
+  private static String headerValue(InterceptedMessage message, String headerName) {
+    return message.getRequest().getHeaders().stream()
+        .filter(h -> h.length == 2 && headerName.equalsIgnoreCase(h[0]))
+        .map(h -> h[1])
+        .findFirst()
+        .orElse(null);
+  }
 }
