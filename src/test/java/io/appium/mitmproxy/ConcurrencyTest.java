@@ -21,16 +21,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests specifically exercising the thread-safety fixes made to
  * {@link MitmproxyJava} and {@link MitmproxyServer}:
- *
+ * <p>
  * 1. Many requests in flight at once should all be captured correctly by a
- *    thread-safe interceptor, with no lost/corrupted messages.
+ * thread-safe interceptor, with no lost/corrupted messages.
  * 2. A racing start() from multiple threads should let exactly one caller
- *    succeed and everyone else should fail fast with IllegalStateException,
- *    rather than double-starting the websocket server / mitmdump process.
+ * succeed and everyone else should fail fast with IllegalStateException,
+ * rather than double-starting the websocket server / mitmdump process.
  * 3. An interceptor that throws should not hang the in-flight HTTP request —
- *    the request should still complete (unmodified) instead of timing out.
+ * the request should still complete (unmodified) instead of timing out.
  * 4. stop() without a successful start() should be a safe no-op, not an NPE.
- *
+ * <p>
  * Requires mitmdump to be resolvable — see MitmproxyJavaTest.getMITMDumpPath().
  */
 public class ConcurrencyTest {

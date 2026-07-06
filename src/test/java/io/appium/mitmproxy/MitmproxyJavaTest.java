@@ -20,9 +20,10 @@ public class MitmproxyJavaTest {
   //private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
   private static final String MITMDUMP_PATH = getMITMDumpPath();
 
-  static String getMITMDumpPath(){
+  static String getMITMDumpPath() {
     return "/Library/Frameworks/Python.framework/Versions/3.11/bin/mitmdump";
   }
+
   @Test
   public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
     MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {

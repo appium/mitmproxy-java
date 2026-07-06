@@ -10,48 +10,48 @@ import java.nio.ByteOrder;
 
 public class MessageSerializer {
 
-    private final static ObjectMapper objectMapper = new ObjectMapper();
-    private static final int START_BYTES = 8;
+  private final static ObjectMapper objectMapper = new ObjectMapper();
+  private static final int START_BYTES = 8;
 
-    @SneakyThrows(IOException.class)
-    public InterceptedMessage deserializeMessage(ByteBuffer buffer) {
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
+  @SneakyThrows(IOException.class)
+  public InterceptedMessage deserializeMessage(ByteBuffer buffer) {
+    buffer.order(ByteOrder.LITTLE_ENDIAN);
 
-        int metadataSize = buffer.getInt();
-        int request_content_size = buffer.getInt();
-        int response_content_size = buffer.getInt();
+    int metadataSize = buffer.getInt();
+    int request_content_size = buffer.getInt();
+    int response_content_size = buffer.getInt();
 
-        byte[] metadataBytes = new byte[metadataSize];
-        buffer.get(metadataBytes);
+    byte[] metadataBytes = new byte[metadataSize];
+    buffer.get(metadataBytes);
 
-        byte[] requestBody = new byte[request_content_size];
-        buffer.get(requestBody);
+    byte[] requestBody = new byte[request_content_size];
+    buffer.get(requestBody);
 
-        byte[] responseBody = new byte[response_content_size];
-        buffer.get(responseBody);
+    byte[] responseBody = new byte[response_content_size];
+    buffer.get(responseBody);
 
-        InterceptedMessage interceptedMessage = objectMapper.readValue(metadataBytes, InterceptedMessage.class);
-        interceptedMessage.getRequest().setBody(requestBody);
-        interceptedMessage.getResponse().setBody(responseBody);
+    InterceptedMessage interceptedMessage = objectMapper.readValue(metadataBytes, InterceptedMessage.class);
+    interceptedMessage.getRequest().setBody(requestBody);
+    interceptedMessage.getResponse().setBody(responseBody);
 
-        return interceptedMessage;
-    }
+    return interceptedMessage;
+  }
 
-    public ByteBuffer serializeMessage(InterceptedMessage message) throws JsonProcessingException {
-        byte[] responseBody = message.getResponse().getBody();
+  public ByteBuffer serializeMessage(InterceptedMessage message) throws JsonProcessingException {
+    byte[] responseBody = message.getResponse().getBody();
 
-        int contentLength = responseBody.length;
+    int contentLength = responseBody.length;
 
-        byte[] metadata = objectMapper.writeValueAsBytes(message.getResponse());
-        int metadataLength = metadata.length;
+    byte[] metadata = objectMapper.writeValueAsBytes(message.getResponse());
+    int metadataLength = metadata.length;
 
-        ByteBuffer buffer = ByteBuffer.allocate(START_BYTES + metadataLength + contentLength);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putInt(metadataLength);
-        buffer.putInt(contentLength);
-        buffer.put(metadata);
-        buffer.put(message.getResponse().getBody());
+    ByteBuffer buffer = ByteBuffer.allocate(START_BYTES + metadataLength + contentLength);
+    buffer.order(ByteOrder.LITTLE_ENDIAN);
+    buffer.putInt(metadataLength);
+    buffer.putInt(contentLength);
+    buffer.put(metadata);
+    buffer.put(message.getResponse().getBody());
 
-        return buffer.rewind();
-    }
+    return buffer.rewind();
+  }
 }
