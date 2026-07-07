@@ -1,9 +1,8 @@
 package io.appium.mitmproxy;
 
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
-import org.apache.http.HttpHost;
+import kong.unirest.core.HttpResponse;
+import kong.unirest.core.Unirest;
+import kong.unirest.core.UnirestException;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -18,117 +17,115 @@ import static org.mockito.Mockito.verify;
 
 public class MitmproxyJavaTest {
 
-    //private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
-    private static final String MITMDUMP_PATH = getMITMDumpPath();
+  //private static final String MITMDUMP_PATH = "C:\\Python37\\Scripts\\mitmdump.exe";
+  private static final String MITMDUMP_PATH = getMITMDumpPath();
 
-    static String getMITMDumpPath(){
-        if(System.getProperty("os.name").contains("Mac")){
-            return "/opt/homebrew/bin/mitmdump";
-        }
-        return "/usr/local/bin/mitmdump";
-    }
-    @Test
-    public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
-        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
-            System.out.println(m.getRequest().getUrl());
-            return m;
-        });
-        proxy.start();
-        System.out.println("advanced in test");
-        proxy.stop();
-    }
+  static String getMITMDumpPath() {
+    return "/Library/Frameworks/Python.framework/Versions/3.11/bin/mitmdump";
+  }
 
-    @Test
-    public void SimpleTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<>();
+  @Test
+  public void ConstructorTest() throws InterruptedException, IOException, TimeoutException {
+    MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
+      System.out.println(m.getRequest().getUrl());
+      return m;
+    });
+    proxy.start();
+    System.out.println("advanced in test");
+    proxy.stop();
+  }
 
-        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
-            messages.add(m);
-            return m;
-        });
-        proxy.start();
+  @Test
+  public void SimpleTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
+    List<InterceptedMessage> messages = new ArrayList<>();
 
-        Unirest.setProxy(new HttpHost("localhost", 8080));
-        Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
+    MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
+      messages.add(m);
+      return m;
+    });
+    proxy.start();
 
-        proxy.stop();
-        final InterceptedMessage firstMessage = messages.get(0);
+    Unirest.config().reset().proxy("localhost", 8080);
+    Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
 
-        assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
-        assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
-        assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(200);
-    }
+    proxy.stop();
+    final InterceptedMessage firstMessage = messages.get(0);
 
-    @Test
-    public void NullInterceptorReturnTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<>();
+    assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
+    assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
+    assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(200);
+  }
 
-        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
-            messages.add(m);
-            return null;
-        }, 8087, null);
-        proxy.start();
+  @Test
+  public void NullInterceptorReturnTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
+    List<InterceptedMessage> messages = new ArrayList<>();
 
-        Unirest.setProxy(new HttpHost("localhost", 8087));
-        Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
+    MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
+      messages.add(m);
+      return null;
+    }, 8087, null);
+    proxy.start();
 
-        proxy.stop();
+    Unirest.config().reset().proxy("localhost", 8087);
+    Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
 
-        assertThat(messages).isNotEmpty();
+    proxy.stop();
 
-        final InterceptedMessage firstMessage = messages.get(0);
+    assertThat(messages).isNotEmpty();
 
-        assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
-        assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
-        assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(200);
-    }
+    final InterceptedMessage firstMessage = messages.get(0);
 
-    @Test
-    public void ResponseModificationTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
-        List<InterceptedMessage> messages = new ArrayList<>();
+    assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
+    assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
+    assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(200);
+  }
 
-        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
-            messages.add(m);
-            m.getResponse().setBody("Hi from Test".getBytes(StandardCharsets.UTF_8));
-            m.getResponse().getHeaders().add(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
-            m.getResponse().setStatusCode(208);
-            return m;
-        });
-        proxy.start();
+  @Test
+  public void ResponseModificationTest() throws InterruptedException, TimeoutException, IOException, UnirestException {
+    List<InterceptedMessage> messages = new ArrayList<>();
 
-        Unirest.setProxy(new HttpHost("localhost", 8080));
-        HttpResponse<String> response = Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
-        proxy.stop();
+    MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
+      messages.add(m);
+      m.getResponse().setBody("Hi from Test".getBytes(StandardCharsets.UTF_8));
+      m.getResponse().getHeaders().add(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
+      m.getResponse().setStatusCode(208);
+      return m;
+    });
+    proxy.start();
 
-        assertThat(response.getBody()).isEqualTo("Hi from Test");
+    Unirest.config().reset().proxy("localhost", 8080);
+    HttpResponse<String> response = Unirest.get("http://appium.io").header("myTestHeader", "myTestValue").asString();
+    proxy.stop();
 
-        final InterceptedMessage firstMessage = messages.get(0);
+    assertThat(response.getBody()).isEqualTo("Hi from Test");
 
-        assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
-        assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
-        assertThat(firstMessage.getResponse().getHeaders()).containsOnlyOnce(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
-        assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(208);
-    }
+    final InterceptedMessage firstMessage = messages.get(0);
 
-    @Test
-    public void shouldAddParametersToMitmdumpStart() throws IOException, TimeoutException, InterruptedException {
-        List<String> mitmdumpParams = new ArrayList<>();
-        mitmdumpParams.add("testParam");
+    assertThat(firstMessage.getRequest().getUrl()).startsWith("http://appium.io");
+    assertThat(firstMessage.getRequest().getHeaders()).containsOnlyOnce(new String[]{"myTestHeader", "myTestValue"});
+    assertThat(firstMessage.getResponse().getHeaders()).containsOnlyOnce(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
+    assertThat(firstMessage.getResponse().getStatusCode()).isEqualTo(208);
+  }
 
-        List<String> spiedParams = spy(mitmdumpParams);
+  @Test
+  public void shouldAddParametersToMitmdumpStart() throws IOException, TimeoutException, InterruptedException {
+    List<String> mitmdumpParams = new ArrayList<>();
+    mitmdumpParams.add("testParam");
 
-        MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
-            m.getResponse().setBody("Hi from Test".getBytes(StandardCharsets.UTF_8));
-            m.getResponse().getHeaders().add(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
-            m.getResponse().setStatusCode(208);
-            return m;
-        }, 8087, spiedParams);
+    List<String> spiedParams = spy(mitmdumpParams);
 
-        proxy.start();
-        proxy.stop();
+    MitmproxyJava proxy = new MitmproxyJava(MITMDUMP_PATH, (InterceptedMessage m) -> {
+      m.getResponse().setBody("Hi from Test".getBytes(StandardCharsets.UTF_8));
+      m.getResponse().getHeaders().add(new String[]{"myTestResponseHeader", "myTestResponseHeaderValue"});
+      m.getResponse().setStatusCode(208);
+      return m;
+    }, 8087, spiedParams);
 
-        //to verify that additional params were actually included to start path
-        verify(spiedParams).toArray();
+    proxy.start();
+    proxy.stop();
 
-    }
+    //to verify that additional params were actually included to start path
+    verify(spiedParams).toArray();
+
+  }
 }

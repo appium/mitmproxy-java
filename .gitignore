@@ -1,5 +1,6 @@
-.gradle
 .idea
+target
 out
 build
 __pycache__
+/.mvn/wrapper/maven-wrapper.jar
