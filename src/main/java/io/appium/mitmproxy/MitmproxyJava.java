@@ -36,7 +36,17 @@ public class MitmproxyJava {
 
   private final Function<InterceptedMessage, InterceptedMessage> messageInterceptor;
 
+  // The port requested at construction time. 0 means "pick any free port" —
+  // resolved into actualProxyPort below, once start() actually binds it.
   private final int proxyPort;
+
+  // The port actually used once started — same as proxyPort if an explicit
+  // port was requested, or the OS-assigned free port if proxyPort was 0.
+  // Exposed via getProxyPort() so callers (e.g. wiring up a browser's proxy
+  // capability) can find out which port to point at, especially important
+  // when running multiple instances in parallel (e.g. parallel test threads)
+  // where each one needs its own port rather than colliding on a shared one.
+  private volatile int actualProxyPort = -1;
 
   // volatile: start() and stop() are frequently called from different threads
   // (e.g. a test's @Before/@After running on the test runner thread vs. a
@@ -63,6 +73,15 @@ public class MitmproxyJava {
     this(mitmproxyPath, messageInterceptor, 8080, null);
   }
 
+  /**
+   * @return the port mitmdump is actually listening on for HTTP(S) traffic,
+   * once start() has completed. -1 if start() hasn't been called yet.
+   */
+  public int getProxyPort() {
+    return actualProxyPort;
+  }
+
+
   public synchronized MitmproxyJava start() throws IOException, TimeoutException {
     if (!isRunning.compareAndSet(false, true)) {
       throw new IllegalStateException("MitmproxyJava is already running; call stop() first");
@@ -71,6 +90,17 @@ public class MitmproxyJava {
     log.info("Starting mitmproxy on port {}", proxyPort);
 
     try {
+      // Resolve the port to actually use: an explicit port is used as-is
+      // (unchanged behavior for existing callers); 0 means "pick a free
+      // one". This MUST happen before anything below uses a port number —
+      // findFreePort() returns a real, currently-unused port, whereas the
+      // raw value 0 can only be used for binding, not for the
+      // waitForPortToBeInUse/waitForPortToBeFree polling checks below,
+      // which need an actual port number to connect to.
+      actualProxyPort = (proxyPort == 0) ? findFreePort() : proxyPort;
+
+      log.info("Starting mitmproxy on port {}", actualProxyPort);
+
       // Each MitmproxyJava instance gets its OWN free port for the Java<->Python
       // control channel, instead of the old hardcoded 8765. Without this, two
       // instances running at the same time (e.g. parallel test execution) would
@@ -108,13 +138,14 @@ public class MitmproxyJava {
           .start()
           .getFuture();
 
-      waitForPortToBeInUse(proxyPort);
-      log.info("Mitmproxy started on port {}", proxyPort);
+      waitForPortToBeInUse(actualProxyPort);
+      log.info("Mitmproxy started on port {}", actualProxyPort);
       return this;
     } catch (IOException | TimeoutException | RuntimeException e) {
       // Roll back the "running" flag so a failed start() can be retried
       // instead of permanently wedging this instance in a started state.
       isRunning.set(false);
+      actualProxyPort = -1;
       throw e;
     }
   }
@@ -166,10 +197,11 @@ public class MitmproxyJava {
       if (server != null) {
         server.stop(1000);
       }
-      waitForPortToBeFree(proxyPort);
+      waitForPortToBeFree(actualProxyPort);
     } finally {
       server = null;
       mitmproxyProcess = null;
+      actualProxyPort = -1;
     }
   }
 
@@ -215,4 +247,5 @@ public class MitmproxyJava {
       Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
     }
   }
+
 }

@@ -90,14 +90,12 @@
           </exclusions>
         </dependency>
 
-      <!-- Source: https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
         <version>3.20.0</version>
       </dependency>
 
-      <!-- Source: https://mvnrepository.com/artifact/commons-io/commons-io -->
       <dependency>
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
